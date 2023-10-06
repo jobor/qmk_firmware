@@ -30,12 +30,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             SEND_STRING(QMK_KEYBOARD "/" QMK_KEYMAP " @ " QMK_VERSION);
             return false;
         case MY_KC_RGB_COLOR1:
+            rgblight_enable();
+            rgblight_mode(1);
             rgblight_setrgb(RGB_PURPLE);
             return false;
         case MY_KC_RGB_COLOR2:
+            rgblight_enable();
+            rgblight_mode(1);
             rgblight_setrgb(RGB_CHARTREUSE);
             return false;
         case MY_KC_RGB_COLOR3:
+            rgblight_enable();
+            rgblight_mode(1);
             rgblight_setrgb(RGB_GOLD);
             return false;
         }
