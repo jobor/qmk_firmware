@@ -8,3 +8,9 @@
 
 #undef LED_BRIGHTNESS_DEFAULT
 #define LED_BRIGHTNESS_DEFAULT (LED_BRIGHTNESS_LO)
+
+#define TAPPING_TERM 175
+
+// Enable rapid switch from tap to hold, disables double tap hold auto-repeat.
+#define QUICK_TAP_TERM 0
+
