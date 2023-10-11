@@ -1,12 +1,6 @@
 #include QMK_KEYBOARD_H
 #include "version.h"
 
-enum layers {
-    BASE,  // default layer
-    SYMB,  // symbols
-    MDIA,  // media keys
-};
-
 enum custom_keycodes {
     VRSN = SAFE_RANGE,
     MY_KC_RGB_COLOR1,
