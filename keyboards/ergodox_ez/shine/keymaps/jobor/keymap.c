@@ -14,19 +14,25 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (record->event.pressed) {
         switch (keycode) {
         case MY_KC_RGB_COLOR1:
-            rgblight_enable();
-            rgblight_mode(1);
-            rgblight_setrgb(RGB_PURPLE);
+            if (record->event.pressed) {
+                rgblight_enable();
+                rgblight_mode(1);
+                rgblight_setrgb(RGB_PURPLE);
+            }
             return false;
         case MY_KC_RGB_COLOR2:
-            rgblight_enable();
-            rgblight_mode(1);
-            rgblight_setrgb(RGB_CHARTREUSE);
+            if (record->event.pressed) {
+                rgblight_enable();
+                rgblight_mode(1);
+                rgblight_setrgb(RGB_CHARTREUSE);
+            }
             return false;
         case MY_KC_RGB_COLOR3:
-            rgblight_enable();
-            rgblight_mode(1);
-            rgblight_setrgb(RGB_GOLD);
+            if (record->event.pressed) {
+                rgblight_enable();
+                rgblight_mode(1);
+                rgblight_setrgb(RGB_CORAL);
+            }
             return false;
         }
     }
