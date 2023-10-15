@@ -4,11 +4,24 @@
 enum custom_keycodes {
     MY_KC_RGB_COLOR1 = SAFE_RANGE,
     MY_KC_RGB_COLOR2,
-    MY_KC_RGB_COLOR3
+    MY_KC_RGB_COLOR3,
+    MY_KC_UMLAUT_A,
+    MY_KC_UMLAUT_O,
+    MY_KC_UMLAUT_U,
+    MY_KC_SHARP_S
 };
 
 // Include the file that was generated from the key-map JSON file.
 #include "ergodox_ez-shine-jobor.inc"
+
+void tap_compose_doublequote_key(uint16_t keycode) {
+    const uint8_t orig_mods = get_mods();
+    clear_mods();
+    tap_code(KC_PAUSE);
+    SEND_STRING("\"");
+    set_mods(orig_mods);
+    tap_code(keycode);
+}
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (record->event.pressed) {
@@ -32,6 +45,26 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 rgblight_enable();
                 rgblight_mode(1);
                 rgblight_setrgb(RGB_CORAL);
+            }
+            return false;
+        case MY_KC_UMLAUT_A:
+            if (record->event.pressed) {
+                tap_compose_doublequote_key(KC_A);
+            }
+            return false;
+        case MY_KC_UMLAUT_O:
+            if (record->event.pressed) {
+                tap_compose_doublequote_key(KC_O);
+            }
+            return false;
+        case MY_KC_UMLAUT_U:
+            if (record->event.pressed) {
+                tap_compose_doublequote_key(KC_U);
+            }
+            return false;
+        case MY_KC_SHARP_S:
+            if (record->event.pressed) {
+                SEND_STRING(SS_TAP(X_PAUSE)"ss");
             }
             return false;
         }
