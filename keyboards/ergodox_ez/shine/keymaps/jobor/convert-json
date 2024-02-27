@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-qmk json2c ergodox_ez-shine-jobor.json -o ergodox_ez-shine-jobor.inc
-
-cat <<EOF >>ergodox_ez-shine-jobor.inc
-/* Local Variables:  */
-/* mode: C           */
-/* End:              */
-EOF

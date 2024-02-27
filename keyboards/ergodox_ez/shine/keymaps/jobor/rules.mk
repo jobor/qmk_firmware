@@ -8,3 +8,11 @@ COMMAND_ENABLE = no
 SPACE_CADET_ENABLE = no
 CAPS_WORD_ENABLE = yes
 DYNAMIC_TAPPING_TERM_ENABLE = yes
+
+$(MAIN_KEYMAP_PATH_1)/ergodox_ez-shine-jobor.inc: $(MAIN_KEYMAP_PATH_1)/ergodox_ez-shine-jobor.json
+	@$(QMK_BIN) json2c $< -o $@
+	@echo "/* Local Variables:  */" >> $@
+	@echo "/* mode: C           */" >> $@
+	@echo "/* End:              */" >> $@
+
+$(MAIN_KEYMAP_PATH_1)/keymap.c: $(MAIN_KEYMAP_PATH_1)/ergodox_ez-shine-jobor.inc
