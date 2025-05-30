@@ -270,6 +270,9 @@ void process_record(keyrecord_t *record) {
     if (IS_NOEVENT(record->event)) {
         return;
     }
+#ifdef FLOW_TAP_TERM
+    flow_tap_update_last_event(record);
+#endif // FLOW_TAP_TERM
 
     if (!process_record_quantum(record)) {
 #ifndef NO_ACTION_ONESHOT
@@ -374,7 +377,7 @@ void process_action(keyrecord_t *record, action_t action) {
     if (is_oneshot_layer_active() && event.pressed &&
         (action.kind.id == ACT_USAGE || !(IS_MODIFIER_KEYCODE(action.key.code)
 #    ifndef NO_ACTION_TAPPING
-                                          || (tap_count == 0 && (action.kind.id == ACT_LMODS_TAP || action.kind.id == ACT_RMODS_TAP))
+                                          || ((action.kind.id == ACT_LMODS_TAP || action.kind.id == ACT_RMODS_TAP) && (action.layer_tap.code <= MODS_TAP_TOGGLE || tap_count == 0))
 #    endif
                                               ))
 #    ifdef SWAP_HANDS_ENABLE
@@ -497,7 +500,7 @@ void process_action(keyrecord_t *record, action_t action) {
                 default:
                     if (event.pressed) {
                         if (tap_count > 0) {
-#    ifdef HOLD_ON_OTHER_KEY_PRESS_PER_KEY
+#    ifdef HOLD_ON_OTHER_KEY_PRESS
                             if (
 #        ifdef HOLD_ON_OTHER_KEY_PRESS_PER_KEY
                                 get_hold_on_other_key_press(get_event_keycode(record->event, false), record) &&
@@ -658,7 +661,6 @@ void process_action(keyrecord_t *record, action_t action) {
                                 layer_off(action.layer_tap.val);
                                 break;
                             } else if (tap_count < ONESHOT_TAP_TOGGLE) {
-                                layer_on(action.layer_tap.val);
                                 set_oneshot_layer(action.layer_tap.val, ONESHOT_START);
                             }
                         } else {
@@ -671,7 +673,6 @@ void process_action(keyrecord_t *record, action_t action) {
                         }
 #        else
                         if (event.pressed) {
-                            layer_on(action.layer_tap.val);
                             set_oneshot_layer(action.layer_tap.val, ONESHOT_START);
                         } else {
                             clear_oneshot_layer_state(ONESHOT_PRESSED);
@@ -925,7 +926,7 @@ __attribute__((weak)) void register_code(uint8_t code) {
         // Force a new key press if the key is already pressed
         // without this, keys with the same keycode, but different
         // modifiers will be reported incorrectly, see issue #1708
-        if (is_key_pressed(keyboard_report, code)) {
+        if (is_key_pressed(code)) {
             del_key(code);
             send_keyboard_report();
         }
@@ -1011,9 +1012,7 @@ __attribute__((weak)) void unregister_code(uint8_t code) {
  */
 __attribute__((weak)) void tap_code_delay(uint8_t code, uint16_t delay) {
     register_code(code);
-    for (uint16_t i = delay; i > 0; i--) {
-        wait_ms(1);
-    }
+    wait_ms(delay);
     unregister_code(code);
 }
 
@@ -1155,6 +1154,23 @@ bool is_tap_action(action_t action) {
             return false;
     }
     return false;
+}
+
+uint16_t get_tap_keycode(uint16_t keycode) {
+    switch (keycode) {
+        case QK_MOD_TAP ... QK_MOD_TAP_MAX:
+            return QK_MOD_TAP_GET_TAP_KEYCODE(keycode);
+        case QK_LAYER_TAP ... QK_LAYER_TAP_MAX:
+            return QK_LAYER_TAP_GET_TAP_KEYCODE(keycode);
+        case QK_SWAP_HANDS ... QK_SWAP_HANDS_MAX:
+            // IS_SWAP_HANDS_KEYCODE() tests for the special action keycodes
+            // like SH_TOGG, SH_TT, ..., which overlap the SH_T(kc) range.
+            if (!IS_SWAP_HANDS_KEYCODE(keycode)) {
+                return QK_SWAP_HANDS_GET_TAP_KEYCODE(keycode);
+            }
+            break;
+    }
+    return keycode;
 }
 
 /** \brief Debug print (FIXME: Needs better description)
