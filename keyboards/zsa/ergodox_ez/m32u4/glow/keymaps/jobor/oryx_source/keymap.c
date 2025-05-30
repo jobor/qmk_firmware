@@ -2,7 +2,7 @@
 #include "version.h"
 
 enum custom_keycodes {
-  RGB_SLD = SAFE_RANGE,
+  RGB_SLD = EZ_SAFE_RANGE,
   HSV_86_255_128,
   HSV_172_255_255,
   HSV_27_255_255,
