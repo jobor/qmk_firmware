@@ -7,6 +7,15 @@
 #include "i2c_master.h"
 #include <hal.h>
 
+#ifndef I2C_DRIVER
+#    define I2C_DRIVER I2CD1
+#endif
+void i2c_reset(void) {
+    i2cStop(&I2C_DRIVER);
+    chThdSleepMilliseconds(10);
+    i2c_init();
+}
+#endif
 #pragma GCC push_options
 #pragma GCC optimize("-O3")
 
@@ -187,7 +196,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 __asm__("nop");
             }
         } else {
-            data = 0;
+            data = 0b11000000;
         }
 
         if (raw_matrix_right[row] != data) {
