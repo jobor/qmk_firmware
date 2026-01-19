@@ -1,0 +1,255 @@
+#!/usr/bin/env bash
+
+# pull-keyboard-sources: Extract ORYX keyboard source archives and update oryx_source directory
+# Usage: ./pull-keyboard-sources <directory>
+
+set -euo pipefail
+
+# ============================================================================
+# Constants and Setup
+# ============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# These will be set after detecting the keyboard variant
+KEYMAP_DIR=""
+TARGET_DIR=""
+
+# Temp directory (will be set later)
+TEMP_DIR=""
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+errcho() {
+    echo "$@" >&2
+}
+
+error_exit() {
+    local exit_code="$1"
+    shift
+    errcho "Error: $*"
+    exit "$exit_code"
+}
+
+info_msg() {
+    echo "==> $*"
+}
+
+success_msg() {
+    echo "==> $*"
+}
+
+cleanup_temp() {
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+        info_msg "Cleaning up temporary directory..."
+        rm -rf "$TEMP_DIR"
+    fi
+}
+
+show_usage() {
+    cat << EOF
+Usage: $(basename "$0") <directory>
+
+Extract the newest ZSA keyboard source archive from the specified directory
+and update the oryx_source/ directory in the jobor keymap.
+
+Arguments:
+  directory    Directory containing zsa_*_source.zip files
+
+Options:
+  --help       Show this help message
+
+Example:
+  $(basename "$0") ~/Downloads
+
+The script will:
+  1. Find the newest zsa_*_source.zip file in the directory
+  2. Extract it to a temporary directory
+  3. Copy the extracted source files to oryx_source/
+  4. Clean up temporary files
+
+Note: The wrapper files (keymap.c, config.h, rules.mk, keymap.json) in the
+jobor keymap directory are never modified by this script.
+EOF
+}
+
+# ============================================================================
+# Main Script
+# ============================================================================
+
+# Check for --help flag
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    show_usage
+    exit 0
+fi
+
+# Check argument count
+if [[ $# -ne 1 ]]; then
+    errcho "Error: Invalid number of arguments"
+    echo ""
+    show_usage
+    exit 1
+fi
+
+SOURCE_DIR="$1"
+
+# Set up cleanup trap
+trap cleanup_temp EXIT INT TERM
+
+# ============================================================================
+# Validation
+# ============================================================================
+
+info_msg "Validating environment..."
+
+# Check for required tools
+for tool in unzip find; do
+    if ! command -v "$tool" &> /dev/null; then
+        error_exit 2 "Required tool '$tool' not found. Please install it and try again."
+    fi
+done
+
+# Validate source directory
+if [[ ! -d "$SOURCE_DIR" ]]; then
+    error_exit 3 "Source directory does not exist: $SOURCE_DIR"
+fi
+
+if [[ ! -r "$SOURCE_DIR" ]]; then
+    error_exit 3 "Source directory is not readable: $SOURCE_DIR"
+fi
+
+# ============================================================================
+# Find Newest Zip File
+# ============================================================================
+
+info_msg "Searching for ORYX source archives in: $SOURCE_DIR"
+
+# Find newest zip file
+ZIP_RESULT=$(find "$SOURCE_DIR" -maxdepth 1 -name 'zsa_*_source.zip' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1)
+
+if [[ -z "$ZIP_RESULT" ]]; then
+    error_exit 4 "No zsa_*_source.zip files found in: $SOURCE_DIR"
+fi
+
+# Extract filename from result
+ZIP_FILE=$(echo "$ZIP_RESULT" | cut -d' ' -f2-)
+
+if [[ ! -f "$ZIP_FILE" ]]; then
+    error_exit 4 "Zip file not found: $ZIP_FILE"
+fi
+
+info_msg "Found archive: $(basename "$ZIP_FILE")"
+
+# ============================================================================
+# Detect Keyboard Variant
+# ============================================================================
+
+# Check if archive name contains "shine" to determine the target directory
+if [[ "$(basename "$ZIP_FILE")" == *shine* ]]; then
+    KEYBOARD_VARIANT="shine"
+    info_msg "Detected keyboard variant: shine"
+else
+    KEYBOARD_VARIANT="glow"
+    info_msg "Detected keyboard variant: glow"
+fi
+
+KEYMAP_DIR="$SCRIPT_DIR/keyboards/zsa/ergodox_ez/m32u4/$KEYBOARD_VARIANT/keymaps/jobor"
+TARGET_DIR="$KEYMAP_DIR/oryx_source"
+
+info_msg "Target directory: $TARGET_DIR"
+
+# ============================================================================
+# Temp Directory Setup
+# ============================================================================
+
+info_msg "Creating temporary directory..."
+TEMP_DIR=$(mktemp -d)
+
+if [[ ! -d "$TEMP_DIR" ]]; then
+    error_exit 6 "Failed to create temporary directory"
+fi
+
+# ============================================================================
+# Validate and Extract Zip
+# ============================================================================
+
+info_msg "Validating archive integrity..."
+if ! unzip -t "$ZIP_FILE" &> /dev/null; then
+    error_exit 5 "Archive validation failed: $ZIP_FILE"
+fi
+
+info_msg "Extracting archive..."
+if ! unzip -q "$ZIP_FILE" -d "$TEMP_DIR"; then
+    error_exit 6 "Failed to extract archive: $ZIP_FILE"
+fi
+
+# ============================================================================
+# Find Source Directory
+# ============================================================================
+
+info_msg "Locating source directory in archive..."
+
+# Find the zsa_*_source directory
+SOURCE_DIRS=($(find "$TEMP_DIR" -maxdepth 2 -type d -name 'zsa_*_source'))
+
+if [[ ${#SOURCE_DIRS[@]} -eq 0 ]]; then
+    error_exit 7 "No zsa_*_source directory found in archive"
+fi
+
+if [[ ${#SOURCE_DIRS[@]} -gt 1 ]]; then
+    error_exit 7 "Multiple zsa_*_source directories found in archive (expected exactly one)"
+fi
+
+EXTRACTED_SOURCE_DIR="${SOURCE_DIRS[0]}"
+info_msg "Found source directory: $(basename "$EXTRACTED_SOURCE_DIR")"
+
+# ============================================================================
+# Copy New Files
+# ============================================================================
+
+info_msg "Updating oryx_source/ directory..."
+
+# Ensure keymap directory exists
+if [[ ! -d "$KEYMAP_DIR" ]]; then
+    error_exit 8 "Keymap directory does not exist: $KEYMAP_DIR"
+fi
+
+# Remove old directory if it exists
+if [[ -d "$TARGET_DIR" ]]; then
+    rm -rf "$TARGET_DIR"
+fi
+
+# Create directory
+mkdir -p "$TARGET_DIR"
+
+# Copy contents of extracted source directory (not the directory itself)
+if ! cp -a "$EXTRACTED_SOURCE_DIR"/. "$TARGET_DIR"/; then
+    error_exit 8 "Failed to copy source files"
+fi
+
+# Verify key files exist
+REQUIRED_FILES=("keymap.c" "config.h" "rules.mk")
+for file in "${REQUIRED_FILES[@]}"; do
+    if [[ ! -f "$TARGET_DIR/$file" ]]; then
+        error_exit 8 "Required file not found after copy: $file"
+    fi
+done
+
+# ============================================================================
+# Success
+# ============================================================================
+
+success_msg "Successfully updated oryx_source/ directory!"
+info_msg "Source: $(basename "$ZIP_FILE")"
+info_msg "Target: $TARGET_DIR"
+
+# List copied files
+info_msg "Copied files:"
+ls -lh "$TARGET_DIR" | tail -n +2 | awk '{printf "  %s (%s)\n", $9, $5}'
+
+success_msg "Done! You can now build the firmware with:"
+echo "  make zsa/ergodox_ez/m32u4/$KEYBOARD_VARIANT:jobor"
+
+exit 0
