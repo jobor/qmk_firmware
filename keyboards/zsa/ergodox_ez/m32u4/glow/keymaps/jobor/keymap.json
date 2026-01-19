@@ -1,6 +1,1 @@
-{
-    "modules": [
-        "zsa/oryx",
-        "zsa/defaults"
-    ]
-}
+oryx_source/keymap.json
